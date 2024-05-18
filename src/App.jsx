@@ -1,55 +1,198 @@
-import { useState } from 'react'
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
+import { createStore } from 'redux';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import './index.css';
 
+// Actions
+const ADD_TODO = 'ADD_TODO';
+const TOGGLE_TODO = 'TOGGLE_TODO';
+const CLEAR_COMPLETED = 'CLEAR_COMPLETED';
+const TOGGLE_DARK_MODE = 'TOGGLE_DARK_MODE';
 
+const addTodo = (text) => ({ type: ADD_TODO, text });
+const toggleTodo = (index) => ({ type: TOGGLE_TODO, index });
+const clearCompleted = () => ({ type: CLEAR_COMPLETED });
+const toggleDarkMode = () => ({ type: TOGGLE_DARK_MODE });
 
-function App() {
-  const [count, setCount] = useState(0)
+// Reducer
+const initialState = {
+  todos: [],
+  darkMode: false,
+};
 
-  return (
-    <>
-      <div className="navbar bg-base-100">
-  <div className="flex-1">
-    <a className="btn btn-ghost text-xl">daisyUI</a>
-  </div>
-  <div className="flex-none">
-    <div className="dropdown dropdown-end">
-      <div tabIndex={0} role="button" className="btn btn-ghost btn-circle">
-        <div className="indicator">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-          <span className="badge badge-sm indicator-item">8</span>
-        </div>
-      </div>
-      <div tabIndex={0} className="mt-3 z-[1] card card-compact dropdown-content w-52 bg-base-100 shadow">
-        <div className="card-body">
-          <span className="font-bold text-lg">8 Items</span>
-          <span className="text-info">Subtotal: $999</span>
-          <div className="card-actions">
-            <button className="btn btn-primary btn-block">View cart</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div className="dropdown dropdown-end">
-      <div tabIndex={0} role="button" className="btn btn-ghost btn-circle avatar">
-        <div className="w-10 rounded-full">
-          <img alt="Tailwind CSS Navbar component" src="https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.jpg" />
-        </div>
-      </div>
-      <ul tabIndex={0} className="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
-        <li>
-          <a className="justify-between">
-            Profile
-            <span className="badge">New</span>
-          </a>
-        </li>
-        <li><a>Settings</a></li>
-        <li><a>Logout</a></li>
-      </ul>
-    </div>
-  </div>
-</div>
-    </>
-  )
+function reducer(state = initialState, action) {
+  switch (action.type) {
+    case ADD_TODO:
+      return {
+        ...state,
+        todos: [...state.todos, { text: action.text, completed: false }],
+      };
+    case TOGGLE_TODO:
+      return {
+        ...state,
+        todos: state.todos.map((todo, index) =>
+          index === action.index ? { ...todo, completed: !todo.completed } : todo
+        ),
+      };
+    case CLEAR_COMPLETED:
+      return {
+        ...state,
+        todos: state.todos.filter((todo) => !todo.completed),
+      };
+    case TOGGLE_DARK_MODE:
+      return {
+        ...state,
+        darkMode: !state.darkMode,
+      };
+    default:
+      return state;
+  }
 }
 
-export default App
+const store = createStore(reducer);
+
+// Components
+function Header() {
+  const dispatch = useDispatch();
+  const darkMode = useSelector((state) => state.darkMode);
+  const [text, setText] = useState('');
+
+  const handleAddTodo = () => {
+    if (text.trim()) {
+      dispatch(addTodo(text));
+      setText('');
+    }
+  };
+
+  return (
+    <header>
+      <h1>TODO</h1>
+      <div className="toggle-container" onClick={() => dispatch(toggleDarkMode())}>
+        <span className="toggle">{darkMode ? '☀️' : '🌙'}</span>
+      </div>
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Create a new todo..."
+        onKeyPress={(e) => e.key === 'Enter' && handleAddTodo()}
+      />
+    </header>
+  );
+}
+
+function TodoList() {
+  const todos = useSelector((state) => state.todos);
+  const dispatch = useDispatch();
+
+  return (
+    <ul className="todo-list">
+      {todos.map((todo, index) => (
+        <li key={index} className={`todo-item ${todo.completed ? 'completed' : ''}`} onClick={() => dispatch(toggleTodo(index))}>
+          <span>{todo.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Footer() {
+  const todos = useSelector((state) => state.todos);
+  const dispatch = useDispatch();
+  const completedCount = todos.filter((todo) => todo.completed).length;
+  const activeCount = todos.length - completedCount;
+
+  return (
+    <footer>
+      <span>{activeCount} items left</span>
+      <button onClick={() => dispatch(clearCompleted())}>Clear Completed</button>
+    </footer>
+  );
+}
+
+function App() {
+  const darkMode = useSelector((state) => state.darkMode);
+
+  return (
+    <div className={`app ${darkMode ? 'dark' : 'light'}`}>
+      <Header />
+      <TodoList />
+      <Footer />
+    </div>
+  );
+}
+
+// Styles
+const styles = `
+  .app {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .app.light {
+    background-color: #f7f7f7;
+    color: #333;
+  }
+
+  .app.dark {
+    background-color: #333;
+    color: #f7f7f7;
+  }
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+  }
+
+  input {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    width: 300px;
+  }
+
+  .toggle-container {
+    cursor: pointer;
+  }
+
+  .todo-list {
+    list-style: none;
+    padding: 0;
+  }
+
+  .todo-item {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+  }
+
+  .todo-item.completed {
+    text-decoration: line-through;
+    color: #aaa;
+  }
+
+  footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+  }
+
+  button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+`;
+
+// Render
+ReactDOM.render(
+  <Provider store={store}>
+    <App />
+    <style>{styles}</style>
+  </Provider>,
+  document.getElementById('root')
+);
